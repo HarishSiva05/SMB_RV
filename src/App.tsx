@@ -4,18 +4,14 @@ import { Session } from '@supabase/supabase-js';
 import { Layout } from './components/Layout';
 import Login from './components/Login';
 import SignUp from './components/SignUp';
-import { FileUpload } from './components/FileUpload';
-import { parseExcelFile } from './utils/excelParser';
-import type { LedgerEntry } from './types/ledger';
+import { LedgerEntryForm } from './components/LedgerEntryForm';
 import { LedgerTable } from './components/LedgerTable';
 import { SupabaseTest } from './components/SupabaseTest';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [ledgerData, setLedgerData] = useState<LedgerEntry[]>([]);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [refreshTable, setRefreshTable] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -31,42 +27,8 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleFileUpload = async (file: File) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const parsedData = await parseExcelFile(file);
-      setLedgerData(parsedData);
-      
-      // Store the parsed data in Supabase
-      const { data, error } = await supabase
-        .from('ledger_entries')
-        .insert(parsedData.map(entry => ({
-          date: entry.date,
-          name: entry.name,
-          rent: entry.rent,
-          gst_bill_amt: entry.gstBillAmt,
-          cleaning: entry.cleaning,
-          electricity: entry.electricity,
-          water: entry.water,
-          gas: entry.gas,
-          ac: entry.ac,
-          room_rent: entry.roomRent,
-          generator: entry.generator,
-          prev_day: entry.prevDay,
-          others: entry.others,
-          discount: entry.discount,
-          gst_amt: entry.gstAmt
-        })));
-      
-      if (error) throw error;
-      console.log('Data stored successfully:', data);
-    } catch (error) {
-      console.error('Error processing file:', error);
-      setError('Failed to process the file. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleEntryAdded = () => {
+    setRefreshTable(prev => !prev);
   };
 
   const handleLogout = async () => {
@@ -111,17 +73,14 @@ function App() {
         <SupabaseTest />
         
         <div className="mt-8 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Upload Ledger Data</h2>
-          <FileUpload onFileUpload={handleFileUpload} />
-          {isLoading && <p className="mt-2 text-sm text-gray-600">Processing file...</p>}
-          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Add New Ledger Entry</h2>
+          <LedgerEntryForm onEntryAdded={handleEntryAdded} />
         </div>
 
-        {ledgerData.length > 0 && (
-          <div className="mt-8 bg-white rounded-lg shadow overflow-hidden">
-            <LedgerTable data={ledgerData} />
-          </div>
-        )}
+        <div className="mt-8 bg-white rounded-lg shadow overflow-hidden">
+          <h2 className="text-lg font-medium text-gray-900 p-6">Ledger Entries</h2>
+          <LedgerTable key={refreshTable.toString()} />
+        </div>
       </div>
     </Layout>
   );
