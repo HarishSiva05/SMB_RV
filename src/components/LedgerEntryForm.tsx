@@ -1,265 +1,279 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from './lib/supabase';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSpring, animated } from 'react-spring';
+import { Section } from './ui/Section';
+import { supabase } from './lib/supabase';
 
 export default function LedgerEntryForm() {
-  const [formData, setFormData] = useState({
-    date: '',
-    name: '',
-    rent: '',
-    gst_bill_amt: '',
-    cleaning: '',
-    electricity: '',
-    water: '',
-    gas: '',
-    ac: '',
-    room_rent: '',
-    generator: '',
-    prev_day: '',
-    others: '',
-    discount: '',
-    gst_amt: '',
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const getUserId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUserId(user?.id || null);
-    };
-    getUserId();
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prevData => ({
-      ...prevData,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setLoading(true);
     setError(null);
 
-    if (!userId) {
-      setError('User not authenticated');
-      return;
-    }
-
-    const processedData = Object.entries(formData).reduce((acc, [key, value]) => {
-      if (['date', 'name'].includes(key)) {
-        acc[key] = value;
-      } else {
-        acc[key] = value === '' ? null : Number(value);
-      }
-      return acc;
-    }, {} as Record<string, string | number | null>);
-
     try {
-      const { data, error } = await supabase
-        .from('ledger_entries')
-        .insert([{ ...processedData, user_id: userId }]);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('You must be logged in to add entries');
+      }
 
-      if (error) throw error;
-      console.log('Entry added successfully:', data);
-      navigate('/'); // Redirect to dashboard after successful submission
-    } catch (error) {
-      console.error('Error adding entry:', error);
-      setError('Failed to add entry. Please try again.');
+      // Get form values directly from elements
+      const form = e.target as HTMLFormElement;
+      const entry = {
+        date: (form.elements.namedItem('date') as HTMLInputElement)?.value,
+        name: (form.elements.namedItem('name') as HTMLInputElement)?.value,
+        rent: Number((form.elements.namedItem('rent') as HTMLInputElement)?.value) || 0,
+        gst_bill_amt: Number((form.elements.namedItem('gstBillAmount') as HTMLInputElement)?.value) || 0,
+        cleaning: Number((form.elements.namedItem('cleaning') as HTMLInputElement)?.value) || 0,
+        electricity: Number((form.elements.namedItem('electricity') as HTMLInputElement)?.value) || 0,
+        water: Number((form.elements.namedItem('water') as HTMLInputElement)?.value) || 0,
+        gas: Number((form.elements.namedItem('gas') as HTMLInputElement)?.value) || 0,
+        ac: Number((form.elements.namedItem('ac') as HTMLInputElement)?.value) || 0,
+        room_rent: Number((form.elements.namedItem('roomRent') as HTMLInputElement)?.value) || 0,
+        generator: Number((form.elements.namedItem('generator') as HTMLInputElement)?.value) || 0,
+        prev_day: Number((form.elements.namedItem('previousDay') as HTMLInputElement)?.value) || 0,
+        others: Number((form.elements.namedItem('others') as HTMLInputElement)?.value) || 0,
+        discount: Number((form.elements.namedItem('discount') as HTMLInputElement)?.value) || 0,
+        gst_amt: Number((form.elements.namedItem('gstAmount') as HTMLInputElement)?.value) || 0,
+        user_id: user.id
+      };
+
+      console.log('Submitting entry:', entry);
+
+      const { data, error: supabaseError } = await supabase
+        .from('ledger_entries')
+        .insert([entry])
+        .select();
+
+      if (supabaseError) throw new Error(supabaseError.message);
+
+      console.log('Success! Added entry:', data);
+      navigate('/');
+    } catch (err) {
+      console.error('Detailed error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to add entry. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const formAnimation = useSpring({
-    from: { opacity: 0, transform: 'translateY(50px)' },
-    to: { opacity: 1, transform: 'translateY(0px)' },
-    config: { tension: 300, friction: 10 },
-  });
-
   return (
-    <animated.form onSubmit={handleSubmit} className="space-y-4" style={formAnimation}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date</label>
-          <input
-            type="date"
-            id="date"
-            name="date"
-            value={formData.date}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="rent" className="block text-sm font-medium text-gray-700">Rent</label>
-          <input
-            type="number"
-            id="rent"
-            name="rent"
-            value={formData.rent}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="gst_bill_amt" className="block text-sm font-medium text-gray-700">GST Bill Amount</label>
-          <input
-            type="number"
-            id="gst_bill_amt"
-            name="gst_bill_amt"
-            value={formData.gst_bill_amt}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="cleaning" className="block text-sm font-medium text-gray-700">Cleaning</label>
-          <input
-            type="number"
-            id="cleaning"
-            name="cleaning"
-            value={formData.cleaning}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="electricity" className="block text-sm font-medium text-gray-700">Electricity</label>
-          <input
-            type="number"
-            id="electricity"
-            name="electricity"
-            value={formData.electricity}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="water" className="block text-sm font-medium text-gray-700">Water</label>
-          <input
-            type="number"
-            id="water"
-            name="water"
-            value={formData.water}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="gas" className="block text-sm font-medium text-gray-700">Gas</label>
-          <input
-            type="number"
-            id="gas"
-            name="gas"
-            value={formData.gas}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="ac" className="block text-sm font-medium text-gray-700">AC</label>
-          <input
-            type="number"
-            id="ac"
-            name="ac"
-            value={formData.ac}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="room_rent" className="block text-sm font-medium text-gray-700">Room Rent</label>
-          <input
-            type="number"
-            id="room_rent"
-            name="room_rent"
-            value={formData.room_rent}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="generator" className="block text-sm font-medium text-gray-700">Generator</label>
-          <input
-            type="number"
-            id="generator"
-            name="generator"
-            value={formData.generator}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="prev_day" className="block text-sm font-medium text-gray-700">Previous Day</label>
-          <input
-            type="number"
-            id="prev_day"
-            name="prev_day"
-            value={formData.prev_day}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="others" className="block text-sm font-medium text-gray-700">Others</label>
-          <input
-            type="number"
-            id="others"
-            name="others"
-            value={formData.others}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="discount" className="block text-sm font-medium text-gray-700">Discount</label>
-          <input
-            type="number"
-            id="discount"
-            name="discount"
-            value={formData.discount}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="gst_amt" className="block text-sm font-medium text-gray-700">GST Amount</label>
-          <input
-            type="number"
-            id="gst_amt"
-            name="gst_amt"
-            value={formData.gst_amt}
-            onChange={handleChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-      </div>
-      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-      <div>
+    <div className="p-6 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">New Booking Entry</h1>
         <button
-          type="submit"
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          onClick={() => navigate('/')}
+          className="px-4 py-2 text-gray-600 hover:text-gray-800"
         >
-          Add Entry
+          Cancel
         </button>
       </div>
-    </animated.form>
+
+      {error && (
+        <div className="mb-4 p-4 text-red-700 bg-red-100 rounded-md">
+          {error}
+        </div>
+      )}
+
+      <Section title="Booking Details">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Basic Details */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  name="date"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Rent
+                </label>
+                <input
+                  type="number"
+                  name="rent"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Additional Charges */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  GST Bill Amount
+                </label>
+                <input
+                  type="number"
+                  name="gstBillAmount"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Cleaning
+                </label>
+                <input
+                  type="number"
+                  name="cleaning"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Electricity
+                </label>
+                <input
+                  type="number"
+                  name="electricity"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Utilities */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Water
+                </label>
+                <input
+                  type="number"
+                  name="water"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Gas
+                </label>
+                <input
+                  type="number"
+                  name="gas"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  AC
+                </label>
+                <input
+                  type="number"
+                  name="ac"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Additional Fees */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Room Rent
+                </label>
+                <input
+                  type="number"
+                  name="roomRent"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Generator
+                </label>
+                <input
+                  type="number"
+                  name="generator"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Previous Day
+                </label>
+                <input
+                  type="number"
+                  name="previousDay"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Others
+              </label>
+              <input
+                type="number"
+                name="others"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Discount
+              </label>
+              <input
+                type="number"
+                name="discount"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                GST Amount
+              </label>
+              <input
+                type="number"
+                name="gstAmount"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-4 pt-6">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-400"
+              disabled={loading}
+            >
+              {loading ? 'Adding Entry...' : 'Add Entry'}
+            </button>
+          </div>
+        </form>
+      </Section>
+    </div>
   );
 }
 

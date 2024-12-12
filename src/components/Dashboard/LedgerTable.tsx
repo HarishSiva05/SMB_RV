@@ -5,8 +5,26 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import type { LedgerEntry } from '../../types/ledger';
 import { format } from 'date-fns';
+
+interface LedgerEntry {
+  id: string;
+  date: string;
+  name: string;
+  rent: number;
+  gst_bill_amt: number;
+  cleaning: number;
+  electricity: number;
+  water: number;
+  gas: number;
+  ac: number;
+  room_rent: number;
+  generator: number;
+  prev_day: number;
+  others: number;
+  discount: number;
+  gst_amt: number;
+}
 
 const columnHelper = createColumnHelper<LedgerEntry>();
 
@@ -16,22 +34,25 @@ const columns = [
     cell: info => format(new Date(info.getValue()), 'dd/MM/yyyy')
   }),
   columnHelper.accessor('name', {
-    header: 'Customer Name'
+    header: 'Name'
   }),
   columnHelper.accessor('rent', {
-    header: 'Rent Amount',
+    header: 'Rent',
     cell: info => `₹${info.getValue().toLocaleString()}`
   }),
-  columnHelper.accessor('totals.advanceReceived', {
-    header: 'Advance',
+  columnHelper.accessor('gst_bill_amt', {
+    header: 'GST Bill',
     cell: info => `₹${info.getValue().toLocaleString()}`
   }),
-  columnHelper.accessor('totals.balanceCollected', {
-    header: 'Balance',
-    cell: info => `₹${info.getValue().toLocaleString()}`
-  }),
-  columnHelper.accessor('totals.pendingBalance', {
-    header: 'Pending',
+  columnHelper.accessor(row => {
+    const total = row.rent + row.gst_bill_amt + row.cleaning + 
+                 row.electricity + row.water + row.gas + 
+                 row.ac + row.room_rent + row.generator + 
+                 row.prev_day + row.others - row.discount;
+    return total;
+  }, {
+    id: 'total',
+    header: 'Total',
     cell: info => `₹${info.getValue().toLocaleString()}`
   })
 ];
@@ -40,7 +61,7 @@ interface LedgerTableProps {
   data: LedgerEntry[];
 }
 
-export function LedgerTable({ data }: LedgerTableProps) {
+export const LedgerTable: React.FC<LedgerTableProps> = ({ data }) => {
   const table = useReactTable({
     data,
     columns,
@@ -58,10 +79,12 @@ export function LedgerTable({ data }: LedgerTableProps) {
                   key={header.id}
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                 </th>
               ))}
             </tr>
@@ -84,4 +107,4 @@ export function LedgerTable({ data }: LedgerTableProps) {
       </table>
     </div>
   );
-}
+};

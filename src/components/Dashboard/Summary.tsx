@@ -1,65 +1,67 @@
 import React from 'react';
 import { IndianRupee, Users, Calendar, AlertCircle } from 'lucide-react';
-import type { LedgerEntry } from '../../types/ledger';
+
+interface LedgerEntry {
+  rent: number;
+  gst_bill_amt: number;
+  cleaning: number;
+  electricity: number;
+  water: number;
+  gas: number;
+  ac: number;
+  room_rent: number;
+  generator: number;
+  prev_day: number;
+  others: number;
+  discount: number;
+}
 
 interface SummaryProps {
   data: LedgerEntry[];
 }
 
-export function Summary({ data }: SummaryProps) {
-  const totalRevenue = data.reduce((sum, entry) => sum + entry.rent, 0);
-  const totalPending = data.reduce((sum, entry) => sum + entry.totals.pendingBalance, 0);
-  const totalCustomers = new Set(data.map(entry => entry.name)).size;
-
-  const stats = [
-    {
-      name: 'Total Revenue',
-      value: `₹${totalRevenue.toLocaleString()}`,
-      icon: IndianRupee,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100'
-    },
-    {
-      name: 'Total Customers',
-      value: totalCustomers,
-      icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100'
-    },
-    {
-      name: 'Total Events',
-      value: data.length,
-      icon: Calendar,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100'
-    },
-    {
-      name: 'Pending Amount',
-      value: `₹${totalPending.toLocaleString()}`,
-      icon: AlertCircle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-100'
-    }
-  ];
+export const Summary: React.FC<SummaryProps> = ({ data }) => {
+  const totalAmount = data.reduce((sum, entry) => {
+    const total = entry.rent + entry.gst_bill_amt + entry.cleaning + 
+                 entry.electricity + entry.water + entry.gas + 
+                 entry.ac + entry.room_rent + entry.generator + 
+                 entry.prev_day + entry.others - entry.discount;
+    return sum + total;
+  }, 0);
 
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-      {stats.map((item) => (
-        <div
-          key={item.name}
-          className="relative bg-white pt-5 px-4 pb-12 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden"
-        >
-          <dt>
-            <div className={`absolute rounded-md p-3 ${item.bgColor}`}>
-              <item.icon className={`h-6 w-6 ${item.color}`} aria-hidden="true" />
-            </div>
-            <p className="ml-16 text-sm font-medium text-gray-500 truncate">{item.name}</p>
-          </dt>
-          <dd className="ml-16 pb-6 flex items-baseline sm:pb-7">
-            <p className="text-2xl font-semibold text-gray-900">{item.value}</p>
-          </dd>
-        </div>
-      ))}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <SummaryCard
+        title="Total Revenue"
+        value={`₹${totalAmount.toLocaleString()}`}
+        icon={<IndianRupee className="w-6 h-6" />}
+      />
+      <SummaryCard
+        title="Total Bookings"
+        value={data.length.toString()}
+        icon={<Calendar className="w-6 h-6" />}
+      />
+      {/* Add more summary cards as needed */}
     </div>
   );
+};
+
+interface SummaryCardProps {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
 }
+
+const SummaryCard: React.FC<SummaryCardProps> = ({ title, value, icon }) => {
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-semibold text-gray-900">{value}</p>
+        </div>
+        <div className="text-indigo-600">{icon}</div>
+      </div>
+    </div>
+  );
+};
