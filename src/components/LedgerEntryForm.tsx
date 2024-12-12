@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
+import { useNavigate } from 'react-router-dom';
+import { useSpring, animated } from 'react-spring';
 
-interface LedgerEntryFormProps {
-  onEntryAdded: () => void;
-}
-
-export function LedgerEntryForm({ onEntryAdded }: LedgerEntryFormProps) {
+export default function LedgerEntryForm() {
   const [formData, setFormData] = useState({
     date: '',
     name: '',
@@ -25,6 +23,7 @@ export function LedgerEntryForm({ onEntryAdded }: LedgerEntryFormProps) {
   });
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const getUserId = async () => {
@@ -67,32 +66,21 @@ export function LedgerEntryForm({ onEntryAdded }: LedgerEntryFormProps) {
 
       if (error) throw error;
       console.log('Entry added successfully:', data);
-      onEntryAdded();
-      setFormData({
-        date: '',
-        name: '',
-        rent: '',
-        gst_bill_amt: '',
-        cleaning: '',
-        electricity: '',
-        water: '',
-        gas: '',
-        ac: '',
-        room_rent: '',
-        generator: '',
-        prev_day: '',
-        others: '',
-        discount: '',
-        gst_amt: '',
-      });
+      navigate('/'); // Redirect to dashboard after successful submission
     } catch (error) {
       console.error('Error adding entry:', error);
       setError('Failed to add entry. Please try again.');
     }
   };
 
+  const formAnimation = useSpring({
+    from: { opacity: 0, transform: 'translateY(50px)' },
+    to: { opacity: 1, transform: 'translateY(0px)' },
+    config: { tension: 300, friction: 10 },
+  });
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <animated.form onSubmit={handleSubmit} className="space-y-4" style={formAnimation}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date</label>
@@ -271,7 +259,7 @@ export function LedgerEntryForm({ onEntryAdded }: LedgerEntryFormProps) {
           Add Entry
         </button>
       </div>
-    </form>
+    </animated.form>
   );
 }
 
