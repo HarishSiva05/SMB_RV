@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { supabase } from './lib/supabase';
 import { useSpring, animated } from 'react-spring';
+import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const formAnimation = useSpring({
     from: { opacity: 0, transform: 'translateY(50px)' },
@@ -21,6 +23,7 @@ export default function Login() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       console.log('Login successful', data);
+      navigate('/dashboard');
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     }

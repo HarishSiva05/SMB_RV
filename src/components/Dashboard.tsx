@@ -14,6 +14,8 @@ const Dashboard: React.FC = () => {
   const [bookings, setBookings] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('');
 
   // Fetch ledger entries
   const fetchBookings = async () => {
@@ -48,7 +50,12 @@ const Dashboard: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 gap-6">
-        <SearchAndFilters />
+        <SearchAndFilters
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filterType={filterType}
+          setFilterType={setFilterType}
+        />
         <Summary data={bookings} />
         <QuickActions />
       </div>

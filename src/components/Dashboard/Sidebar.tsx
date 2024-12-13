@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   HomeIcon,
   CalendarIcon,
@@ -7,11 +7,14 @@ import {
   ChartBarIcon,
   CogIcon,
   MenuIcon,
+  LogoutIcon,
 } from '@heroicons/react/outline';
+import { supabase } from '../lib/supabase';
 
 const Sidebar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
@@ -22,6 +25,15 @@ const Sidebar: React.FC = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <>
@@ -66,6 +78,16 @@ const Sidebar: React.FC = () => {
                   );
                 })}
               </nav>
+            </div>
+            {/* Sign Out Button */}
+            <div className="p-4 border-t border-gray-200">
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center px-2 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md"
+              >
+                <LogoutIcon className="mr-3 h-6 w-6" />
+                Sign Out
+              </button>
             </div>
           </div>
         </div>
